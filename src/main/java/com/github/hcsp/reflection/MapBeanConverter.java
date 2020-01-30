@@ -5,6 +5,8 @@ import org.apache.commons.lang3.StringUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class MapBeanConverter {
     // 传入一个遵守Java Bean约定的对象，读取它的所有属性，存储成为一个Map
@@ -45,24 +47,31 @@ public class MapBeanConverter {
     //  2. 使用反射创建klass对象的一个实例
     //  3. 使用反射调用setter方法对该实例的字段进行设值
     public static <T> T mapToBean(Class<T> klass, Map<String, Object> map) {
-        List<String> methodNames = new ArrayList<>();
+        List<String> methodNames;
         T obj = null;
         try {
             obj = klass.newInstance();
-            Method[] kMethods = klass.getMethods();
-            for (Method m : kMethods) {
-                if (m.getName().startsWith("set")) {
-                    methodNames.add(m.getName());
-                }
-            }
+//            Method[] kMethods = klass.getMethods();
+//            for (Method m : kMethods) {
+//                if (m.getName().startsWith("set")) {
+//                    methodNames.add(m.getName());
+//                }
+//            }
+
+            methodNames = Stream.of(klass.getMethods())
+                    .filter(m -> m.getName()
+                            .startsWith("set"))
+                    .map(Method::getName)
+                    .collect(Collectors.toList());
 
             for (String m : methodNames) {
                 String field = m.substring(3);
-                String fieldName = field.toLowerCase();
+                String fieldName = StringUtils.uncapitalize(field);
                 if (map.keySet().stream().anyMatch(x -> x.toLowerCase().equals(fieldName))) {
                     obj.getClass().getMethod(m, map.get(fieldName).getClass()).invoke(obj, map.get(fieldName));
                 }
             }
+
 
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
             e.printStackTrace();
